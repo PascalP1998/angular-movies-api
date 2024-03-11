@@ -27,26 +27,48 @@ app.get('/api/test', (req, res) => {
     res.json("Test ok");
 });
 
+async function checkEmail(email) {
+    try {
+        const {data, error} = await supabase_client
+        .from('users')
+        .select('*')
+        .eq("email", email)
+        
+        if (error) throw error;
+
+        return data.length > 0;
+
+    } catch (e) {
+        console.error(e.message);
+        return false;
+    }
+}
+
 app.post('/api/registerUser', async (req, res) => {
     console.log("Empfangene Daten:", req.body);
     const {email, password, username} = req.body;
 
-    try {
-        const {data, error} = await supabase_client
-        .from('users')
-        .insert([
-            {username: username, email: email, password: bcrypt.hashSync(password, saltRounds)}
-        ])
-        .select()
-
-        if (error) {
-            res.status(422).json(error);
+    checkEmail(email).then(async emailExists => {
+        if (emailExists) {
+            res.status(418).json({message: "E-Mail existiert bereits", status: 418});
         } else {
-            res.status(200).json(data);
+            const {data, error} = await supabase_client
+            .from('users')
+            .insert([
+                {username: username, email: email, password: bcrypt.hashSync(password, saltRounds)}
+            ])
+            .select()
+
+            if (error) {
+                res.status(422).json({message: error, status: 422});
+            } else {
+                res.status(200).json({message: data, status: 200});
+            }
         }
-    } catch (e) {
-        res.status(500).json(e);
-    }
+    })
+    .catch(error => {
+        res.status(422).json({message: error, status: 422});
+    })
 });
 
 const PORT = 4000;
