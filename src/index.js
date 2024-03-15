@@ -27,49 +27,41 @@ app.get('/api/test', (req, res) => {
     res.json("Test ok");
 });
 
-async function checkEmail(email) {
-    try {
-        const {data, error} = await supabase_client
-        .from('users')
-        .select('*')
-        .eq("email", email)
-        
-        if (error) throw error;
+app.post('/api/addmovie', async (req, res) => {
+    const {username, name, rating, type} = req.body;
 
-        return data.length > 0;
-
-    } catch (e) {
-        console.error(e.message);
-        return false;
-    }
-}
-
-app.post('/api/registerUser', async (req, res) => {
     console.log("Empfangene Daten:", req.body);
-    const {email, password, username} = req.body;
 
-    checkEmail(email).then(async emailExists => {
-        if (emailExists) {
-            res.status(418).json({message: "E-Mail existiert bereits", status: 418});
+    if (username == '' || name == '' || rating == '' || type == '') {
+        res.status(418).json({message: 'Missing information', status:'418'});
+    } else {
+        const {data, error} = await supabase_client
+        .from('movies')
+        .insert([
+            {username: username, name: name, rating: rating, type: type}
+        ])
+        .select()
+    
+        if (error) {
+            res.status(422).json({message: error, status:'422'});
         } else {
-            const {data, error} = await supabase_client
-            .from('users')
-            .insert([
-                {username: username, email: email, password: bcrypt.hashSync(password, saltRounds)}
-            ])
-            .select()
-
-            if (error) {
-                res.status(422).json({message: error, status: 422});
-            } else {
-                res.status(200).json({message: data, status: 200});
-            }
+            res.status(200).json({message: data, status:'200'});
         }
-    })
-    .catch(error => {
-        res.status(422).json({message: error, status: 422});
-    })
-});
+    }
+})
+
+app.get('/api/getreviews', async (req, res) => {
+    
+    const {data, error} = await supabase_client
+    .from('movies')
+    .select('*')
+    
+    if (error) {
+        res.status(422).json(error);
+    } else {
+        res.status(200).json(data);
+    }
+})
 
 const PORT = 4000;
 app.listen(PORT, function(err) {
